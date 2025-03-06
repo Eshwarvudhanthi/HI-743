@@ -1,0 +1,264 @@
+---
+title: "Linear Regression in R"
+author: "VENKATA SESHA SAI ESHWAR VUDHANTHI"
+date: "`r Sys.Date()`"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+#install.packages("tidyverse")
+library(tidyverse)
+
+#install.packages("ISLR2")
+library(ISLR2)
+```
+
+# Boston Dataset Analysis
+
+## Objective
+
+### How can we predict the median value of owner-cupled Homes using the Lowerstatus
+
+#### We can figure out the middle price of homes where owners live using basic linear regression. We'll use the percentage of people with lower status (lstat) to predict the middle home value (medv). We think there's a negative link, which means when lstat goes up, home prices usually go down. To see how well lstat explains changes in home value, we'll look at things like R-squared and Mean Squared Error (MSE). These numbers help us understand how accurate our model is.
+
+### \<What are we analysing? why? What insights can we gain from this analysis?
+
+### We analyze the relationship between the percentage of lower-status population (LSTAT) and median home value (MEDV), to see if there is a significant effect of socio-economic status on housing prices, which can be useful for real estate market predictions, policy making and urban planning.
+
+# Data Understand & Preperation
+
+### \<What kind of variables do we have? What potential questions could we answer further with this data?\>
+
+### The dataset includes different economic, social, and structural variables related to housing. Some questions we might ask are: - How do crime rates affect house prices? - Does the amount of non-retail business have an impact on home values? - How do property tax rates influence housing affordability?
+
+# Data Exploration
+
+### \<What do the summaries say about our data?\>
+
+```{r load.data}
+library(ISLR2)
+data(Boston)
+glimpse(Boston)
+
+summary(Boston)
+```
+
+```{r missing values}
+missing_values = Boston %>%
+  summarise(across(everything(), ~ sum(is.na(.))))
+print(missing_values)
+
+```
+
+# Train-Test Split
+
+\<How does this technique aid our analysis, espicially given new data?\>
+
+### Splitting data into training and testing sets ensures that our model can generalize to unseen data. It prevents overfitting and provides a reliable measure of model performance.
+
+```{r train test}
+set.seed(123) # For reproductibility
+Boston_split = Boston %>%
+  mutate(id = row_number()) %>%
+  sample_frac(0.75)
+
+Boston = Boston %>% mutate(id = row_number())
+
+train_data = Boston_split
+test_data = anti_join(Boston, Boston_split, by = "id") #Remaining 25%
+```
+
+# Exploratory Data Analysis
+
+#### \<What figures did we build? why? What information do they convey? How is it important to the analysis?\>
+
+### We built histograms and scatterplots to understand data distribution and relationships.
+
+```{r histogram for medv}
+
+ggplot(Boston, aes(x = medv)) +
+  geom_histogram(fill = "steelblue", binwidth =2, color = "white") +
+  labs(title = "Distribution of the Meadian Home Values",
+       x = "Median Value ($1000s)",
+       y = "Count")
+       
+```
+
+```{r}
+ggplot(Boston, aes(x = lstat, y=medv)) +
+  geom_point(alpha = 0.6, color = "blue") +
+  labs(title = "Scatterplot: LSTAT vs. MEDV",
+       x = "% Lower Status Population",
+       y = "Median Home Value ($1000s)")
+```
+
+# Model Implementation & Explaination
+
+### \< what model are we using? why does this/these model(s) apply to the data? What are the pros and cons of this type of model?\>
+
+### We are using linear regression because it helps quantify the relationship between LSTAT and MEDV. Pros: simple to interpret, computationally efficient. Cons: assumes linearity, sensitive to outliers.
+
+### Perform simple Liner Regression on Training Data
+
+### \<Describe the function & model fit. Maybe talk about the evaluation metrics? \>
+
+```{r}
+lm.fit = lm(medv ~ lstat, data = train_data)
+summary(lm.fit)
+```
+
+### Could build a scatter plot with this regression line onto it.
+
+# Apply Model to Test Data
+
+### <Could interupt the test MSE>
+
+```{r}
+train_mse = mean((train_data$medv - predict(lm.fit, train_data))^2)
+test_mse = mean((test_data$medv - predict(lm.fit, test_data))^2)
+
+print(paste("Training MSE:", round(train_mse, 2)))
+print(paste("Test MSE:", round(test_mse, 2)))
+```
+
+# Simple Linear Regression Results & Interpritaion
+
+### \<Overall, how good is this fit? What does it say about the data and the question being asked?\>
+
+### If the test MSE is low, it indicates a strong predictive ability. If high, other variables may influence MEDV beyond LSTAT.
+
+# Perform Multiple Linear Regression on Trainign Data
+
+### \<What question does this model answer?\>
+
+### This model investigates how multiple factors (LSTAT and AGE) impact home prices.
+
+```{r}
+lm.multiple.fit = lm(medv ~ lstat + age, data = train_data)
+summary(lm.multiple.fit)
+```
+
+# Apply the Model to Test Data
+
+```{r}
+train_mse = mean((train_data$medv - predict(lm.multiple.fit, train_data))^2)
+test_mse = mean((test_data$medv - predict(lm.multiple.fit, test_data))^2)
+
+print(paste("Training MSE:", round(train_mse, 2)))
+print(paste("Test MSE:", round(test_mse, 2)))
+```
+
+## Multiple Linear Regression Results & Interpritaion
+
+### <Interpretation>
+
+### Comparing the test MSE of simple vs. multiple regression helps determine if adding AGE improves predictions.
+
+# NHANES Data Analysis
+
+## Objective
+
+### Please predict BMI using Age, SmaokeNow, PhysActive for individuals between the ages of 18 and 70
+
+# Data Understanding & Preperation
+
+## Data Loading
+
+```{r}
+#install.packages("NHANES")
+library(NHANES)
+library(tidyverse)
+data(NHANES)
+
+SMOKERS = NHANES %>%
+  select(BMI, Age, SmokeNow, PhysActive) %>%
+  filter(Age >= 18 & Age <= 70)
+```
+
+# Cheking for missing values
+
+```{r}
+missing_values <- SMOKERS %>%
+  summarise(across(everything(), ~ sum(is.na(.))))
+print(missing_values)
+```
+
+# Removing rows with missing values
+
+```{r}
+SMOKERS <- drop_na(SMOKERS)
+```
+
+# Train-Test Split (75% training, 25% testing)
+
+```{r}
+set.seed(123)
+NHANES_split <- SMOKERS %>%
+  mutate(id = row_number()) %>%
+  sample_frac(0.75)
+
+SMOKERS <- SMOKERS %>% mutate(id = row_number())
+
+train_data <- NHANES_split
+test_data <- anti_join(SMOKERS, NHANES_split, by = "id")
+```
+
+# Exploratory Data Analysis
+
+# Histogram of BMI distribution
+
+```{r}
+ggplot(SMOKERS, aes(x = BMI)) +
+  geom_histogram(fill = "steelblue", binwidth = 2, color = "white") +
+  labs(title = "Distribution of BMI",
+       x = "BMI",
+       y = "Count")
+```
+
+# Scatterplot of Age vs BMI
+
+```{r}
+ggplot(SMOKERS, aes(x = Age, y = BMI)) +
+  geom_point(alpha = 0.6, color = "blue") +
+  labs(title = "Scatterplot: Age vs. BMI",
+       x = "Age",
+       y = "BMI")
+```
+
+# Model Implementation - Simple Linear Regression
+
+```{r}
+lm.fit <- lm(BMI ~ Age, data = train_data)
+summary(lm.fit)
+```
+
+# Applying Model to Test Data
+
+```{r}
+train_mse <- mean((train_data$BMI - predict(lm.fit, train_data))^2)
+test_mse <- mean((test_data$BMI - predict(lm.fit, test_data))^2)
+
+print(paste("Training MSE:", round(train_mse, 2)))
+print(paste("Test MSE:", round(test_mse, 2)))
+```
+
+# Multiple Linear Regression (Using Age, SmokeNow, and PhysActive)
+
+```{r}
+lm.multiple.fit <- lm(BMI ~ Age + SmokeNow + PhysActive, data = train_data)
+summary(lm.multiple.fit)
+```
+
+# Applying Multiple Regression Model to Test Data
+
+```{r}
+train_mse_multi <- mean((train_data$BMI - predict(lm.multiple.fit, train_data))^2)
+test_mse_multi <- mean((test_data$BMI - predict(lm.multiple.fit, test_data))^2)
+
+print(paste("Training MSE (Multiple Regression):", round(train_mse_multi, 2)))
+print(paste("Test MSE (Multiple Regression):", round(test_mse_multi, 2)))
+```
