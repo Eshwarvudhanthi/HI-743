@@ -1,0 +1,354 @@
+---
+title: "Logistic Regression & Classification in R"
+author: "VENKATA SESHA SAI ESHWAR VUDHANTHI"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(nnet)
+library(ISLR2)
+```
+
+# 1. Introduction
+
+### \< Introduce the models being used \>
+
+### We are using logistic regression and K-Nearest Neighbors (KNN) classification. Logistic regression is used to predict binary outcomes, and KNN is a flexible method that classifies based on proximity to neighboring data points.
+
+# 2. Data
+
+### \< Describe the data \>
+
+### We are using the Default dataset from the ISLR2 package. It includes whether individuals defaulted on their credit card debt, their balance, income, and student status.
+
+```{r}
+data = Default
+str(data)
+```
+
+# 2.1 Visualizing the Data
+
+## 2.1.1 Distribution of Balance
+
+### \< What does this figure mean? \>
+
+### The figure shows how balance amounts differ between people who default and those who do not. Higher balances are associated with more defaults.
+
+```{r balance distribution}
+ggplot(data, aes(x = balance, fill=default)) +
+  geom_histogram(bins = 30, alpha = 0.7, position = "identity") +
+  labs(title = "Distribution of Balance by Default Status",
+       x= "Balance",
+       y = "Count")
+```
+
+# 2.1.2 Distribution of Income
+
+### \< What does this figure mean \>
+
+### The figure shows income levels by default status. Income seems more evenly distributed across defaulters and non-defaulters.
+
+```{r}
+ggplot(data, aes(x = income, fill = default)) +
+  geom_histogram(bins = 30, alpha = 0.7, position = 'identity') +
+  labs(title = "Distribution of Income by Default Status",
+       x= "Income",
+       y = "Count")
+```
+
+# 2.1.3 Student Status by Default
+
+### This plot shows the number of students vs non-students and their default rates. Students may have different default behaviors than non-students.
+
+```{r}
+ggplot(data, aes(x = student, fill = default)) +
+  geom_bar(position = 'dodge') +
+  labs(title = "Default Status by Student Status",
+       x = "Studnet",
+       y = "Count")
+```
+
+# Logistics Regression
+
+## 4.1 Fitting the Model
+
+### \< Describe Logistic Regression \>
+
+### Logistic regression models the probability of default as a function of balance. It predicts a binary outcome using the logistic function.
+
+```{r}
+logit_model = glm(default ~ balance, data = data, family = binomial)
+summary(logit_model)
+```
+
+```{r}
+data$predicted_prob = predict(logit_model, type = "response")
+head (data)
+```
+
+# 4.2 Evaluate Model Performance
+
+### \< Talk about our model and evaluation metrics \>
+
+### We evaluate the model using a confusion matrix and look at how well it predicts defaults based on a 0.5 threshold.
+
+```{r}
+threshold = 0.5
+data$predicted_default = ifelse(data$predicted_prob > threshold, "Yes", "No")
+conf_matrix = table(data$predicted_default, data$default)
+```
+
+# 5 Multiple Logistic Regression
+
+## Fitting the model
+
+### We will include an interaction term between income and student to differ between student and non-student
+
+```{r}
+logit_mult_model = glm(default ~ balance + income * student, data=data, family=binomial)
+summary(logit_mult_model)
+```
+
+# 5.2 Evaluating the Model
+
+### \< Talk about evaluation metrics / interpretation \>
+
+### We again use a confusion matrix and accuracy to measure performance. A better model will have higher accuracy.
+
+```{r}
+data$mult_predicted_prob = predict(logit_mult_model, type = "response")
+data$mult_predicted_default = ifelse(data$mult_predicted_prob > threshold, "Yes", "No")
+conf_matrix_mult = table(data$mult_predicted_default, data$default)
+conf_matrix_mult
+```
+
+```{r}
+accuracy_mult = sum(diag(conf_matrix_mult)) / sum(conf_matrix_mult)
+accuracy_mult = sum(diag(conf_matrix_mult)) / sum(conf_matrix_mult)
+accuracy_mult
+```
+
+# 6. Multinomial Logistic Regression
+
+## 6.1 Load the Data
+
+```{r}
+data2 = Carseats
+data2$SalesCategory = cut(data2$Sales, breaks = 3, lables = c("Low", "Medium", "High"))
+```
+
+```{r}
+multi_model = multinom(SalesCategory ~ Price + Income + Advertising, data=data2)
+summary(multi_model)
+```
+
+# 6.2 Make Predictions
+
+```{r}
+data2$nomial_predicted_salesCat = predict(multi_model)
+head(data2)
+```
+
+# 6.3 Evalute Model
+
+```{r}
+conf_matrix_mult = table(data2$nomial_predicted_salesCat, data2$SalesCategory)
+conf_matrix_mult
+```
+
+```{r}
+accuracy_mult = sum(diag(conf_matrix_mult)) / sum(conf_matrix_mult)
+accuracy_mult
+```
+
+# Assignment Section
+
+## Background
+
+### Diabetes is a chronic disesse affecting millions of individuals worldwide. Early detection through predictive modeling can help guide prevention and treatment. In this assignment, you will use logistic regression to predict whether an individual has diabetes using basic health information.
+
+We will use the Pima indians Diabetes Dataset, a commonly used dataset in health Informatics available from the UCI Machine Learning Repository and built into the mlbench R package.
+
+# Simple Logistic Regression
+
+```{r }
+####install.packages("mlbench", dependencies = TRUE)
+
+library(mlbench)
+data("PimaIndiansDiabetes")
+df = PimaIndiansDiabetes
+```
+
+### Data Exploration and Summary Figures
+
+```{r}
+glimpse(df)
+summary(df)
+```
+
+### Fit Simple Logistic Regression Model (Train & Test Split)
+
+### <Fit a logistic regression using glucose as a predictors of diabetes >
+
+```{r}
+set.seed(123)
+train_idx <- sample(seq_len(nrow(df)), size = 0.75 * nrow(df))
+train_data <- df[train_idx, ]
+test_data  <- df[-train_idx, ]
+
+# Simple logistic regression on glucose
+simple_logit_model <- glm(diabetes ~ glucose,
+                          data = train_data,
+                          family = binomial)
+summary(simple_logit_model)
+```
+
+## Interpret Coefficients & Apply the Model for Prediction on Test Data
+
+### Higher glucose levels increase the probability of having diabetes.
+
+### Intercept: –5.695 (baseline log‑odds when glucose = 0)
+
+### Glucose: +0.0403 per unit increase (p \< 2e‑16), meaning each additional point of blood glucose raises the log‑odds of diabetes by 0.0403.
+
+```{r}
+test_data$predicted_prob <- predict(simple_logit_model,
+                                    newdata = test_data,
+                                    type = "response")
+test_data$predicted_diabetes <- ifelse(test_data$predicted_prob > 0.5,
+                                       "pos", "neg")
+
+conf_matrix_simple <- table(test_data$predicted_diabetes,
+                            test_data$diabetes)
+conf_matrix_simple
+
+accuracy_simple <- sum(diag(conf_matrix_simple)) / sum(conf_matrix_simple)
+accuracy_simple
+```
+
+### Accuracy: 70.31% of cases correctly classified.
+
+# Multiple Logistic Regression
+
+### We now include glucose, age, BMI, and pregnancies to predict diabetes more accurately.
+
+```{r}
+multi_logit_model <- glm(diabetes ~ glucose + age + mass + pregnant,
+                         data = train_data,
+                         family = binomial)
+summary(multi_logit_model)
+
+```
+
+### Interpretation of Coefficients
+
+### Glucose: +0.0346 (p \< 2e‑16) — higher glucose increases risk.
+
+### Age: +0.0138 (p = 0.193) — not statistically significant.
+
+### Mass (BMI): +0.0800 (p \< 1e‑6) — higher BMI increases risk.
+
+### Pregnant: +0.1063 (p = 0.0036) — each additional pregnancy raises risk.
+
+### \< Fit a Multiple Logistic Regression Model (Train & Test Split)
+
+### \< Fit a logistic regression using the glucose, age, BMI, and pregnant as predictors of diabetes\>
+
+```{r}
+test_data$predicted_prob_multi <- predict(multi_logit_model, newdata = test_data, type = "response")
+test_data$predicted_diabetes_multi <- ifelse(test_data$predicted_prob_multi > 0.5, "pos", "neg")
+
+conf_matrix_multi <- table(test_data$predicted_diabetes_multi, test_data$diabetes)
+conf_matrix_multi
+
+accuracy_multi <- sum(diag(conf_matrix_multi)) / sum(conf_matrix_multi)
+accuracy_multi
+```
+
+### Interpret Coefficients & Apply the Model for Prediction on Test Data
+
+### Glucose: Positive coefficient—higher glucose increases diabetes risk.
+
+### Age: Positive coefficient—older age increases risk.
+
+### Mass: Positive coefficient—higher BMI increases risk.
+
+### Pregnant: Positive coefficient—each additional pregnancy slightly raises the log‑odds of diabetes.
+
+```{r}
+test_data$predicted_prob_multi <- predict(multi_logit_model,
+                                          newdata = test_data,
+                                          type = "response")
+test_data$predicted_diabetes_multi <- ifelse(test_data$predicted_prob_multi > 0.5,
+                                             "pos", "neg")
+
+conf_matrix_multi <- table(test_data$predicted_diabetes_multi,
+                           test_data$diabetes)
+conf_matrix_multi
+
+accuracy_multi <- sum(diag(conf_matrix_multi)) / sum(conf_matrix_multi)
+accuracy_multi
+```
+
+### Accuracy: 73.44%, improved over simple model.
+
+### Sensitivity: 35 / (35 + 32) = 52.24% (better at identifying diabetics).
+
+### Specificity: 106 / (106 + 19) = 84.84% (non‑diabetics still well identified).
+
+# K-Nearest Neighbors Classification
+
+### KNN is a non-parametric method that classifies based on the majority vote of nearest neighbors.
+
+### K-Nearest Neighbors (KNN) is a simple, flexable algorithm that makes predictions based on the majority class of the closest data points.
+
+### Use the caret and class libraries with the knn() function. See our in-class lab for a worked example.
+
+### Prepare the Data
+
+### Fit a KNN Classifier Model (Train & test Split)
+
+### Interpret & Apply to Test Data
+
+```{r}
+library(caret)
+library(class)
+
+# Normalize numeric predictors
+normalize <- function(x) (x - min(x)) / (max(x) - min(x))
+df_norm <- df %>%
+  mutate(across(c(glucose, age, mass, pregnant), normalize))
+
+train_norm <- df_norm[train_idx, ]
+test_norm  <- df_norm[-train_idx, ]
+
+train_labels <- train_norm$diabetes
+test_labels  <- test_norm$diabetes
+
+# Fit KNN model with k = 5
+knn_pred <- knn(train    = train_norm[, c("glucose","age","mass","pregnant")],
+                test     = test_norm[,  c("glucose","age","mass","pregnant")],
+                cl       = train_labels,
+                k        = 5)
+
+conf_matrix_knn <- table(knn_pred, test_labels)
+conf_matrix_knn
+
+accuracy_knn <- sum(diag(conf_matrix_knn)) / sum(conf_matrix_knn)
+accuracy_knn
+```
+
+# Model Comparison and Discussion
+
+### Simple logistic regression captures the main trend but may miss complex patterns.
+
+### Multiple logistic regression adds more predictors, improving accuracy.
+
+### KNN is flexible but may be sensitive to the choice of k and noise in the data.
+
+### Accuracy: 73.96% (slightly higher than multiple logistic).
